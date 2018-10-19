@@ -110,6 +110,7 @@ exports.changeImage = function(query, callback){
 			callback(err, orginalImagePath);
 		}else{
 			// Create the new path
+			console.log(imageSize);
 			var imageSizePath = imageSize.width;
 			if(imageSize.height !== undefined) imageSizePath += "x" +imageSize.height;
 			newPath = SIZED_IMAGE_PATH + imageSizePath + "_" + imageQuality + pathSep;
