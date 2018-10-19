@@ -41,12 +41,24 @@ var removeImagesPath = function(){
 	rmFolder("./images/");
 }
 
-function rmFolder(path){
+var removeImage = function(path) {
 	rr(path,function(err){
-		console.log("Error deleting path " + err);
+		if (err){
+			console.log("Error deleting image on path " + err);
+		}
+	});
+};
+
+function rmFolder(path){
+
+	rr(path,function(err){
+		if (err){
+			console.log("Error deleting path " + err);
+		}
 	});
 }
 
 exports.mkdir = mkdir;
 exports.fileExistsSync = fileExistsSync;
 exports.removeImagesPath = removeImagesPath;
+exports.removeImage = removeImage;

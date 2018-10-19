@@ -6,12 +6,11 @@ var request = require("request"),
 var _ = require("underscore");
 var easyimg = require("easyimage");
 
-var ORGINAL_IMAGE_PATH = "images/orginals/";
-var SIZED_IMAGE_PATH = "images/sizes/";
+var ORGINAL_IMAGE_PATH = "images/";
+var SIZED_IMAGE_PATH = "images/";
 
 // The required resources
 exports.QUERIES_REQUIRED = ['source','size'];
-
 
 
 // Returns true if query has valid params
@@ -56,10 +55,10 @@ exports.getOrginalImage = function(query,callback){
 	var savePath = getImagePath(query.source);
 	console.log("Get Image: " + s);
 	console.log("Get Image - Save path: " + savePath);
-	
+
 	//Create path if does not exist
 	if(getCachedImage(savePath)){
-		// pass back success to convert	
+		// pass back success to convert
 		console.log("Get Image - Imaged Cached!");
 		callback(true);
 		return;
@@ -69,31 +68,6 @@ exports.getOrginalImage = function(query,callback){
 	var req = request({ url : s });
 	req.on('response', function (resp) {
 		if (resp.statusCode === 200) {
-
-			// _.each(resp.headers, function(key, val){
-			// 	console.log("Key => Val " + key + " " + val);
-			// });
-
-			// var contentLength = parseInt(resp.headers["content-length"]);			
-			// if(contentLength === NaN){
-			// 	 contentLength = parseInt(resp.headers["Content-Length"]);
-			// }
-
-			// console.log("Content-Length = " +  contentLength);
-			// var currByteIndex = 0;
-			// var responseBody = new Buffer(contentLength);
-
-			//Grab the data object
-			// resp.setEncoding('binary');
-			// resp.on('data', function (chunk) {
-			// 	//Add to buffer
-			// 	responseBody.write(chunk, currByteIndex, 'binary');
-			// 	currByteIndex += chunk.length;
- 		// 	});
- 			// resp.on('end', function () {
-				// console.log("Downloaded: " + s);
-				// //if(callback !== undefined) callback(responseBody);
- 			// });
 			req.pipe(fs.createWriteStream(savePath));
 		} else {
 			console.log("Error: Code: " + resp.statusCode);
@@ -128,12 +102,7 @@ exports.changeImage = function(query, callback){
 		quality : imageQuality
 	};
 
-	var newPath = SIZED_IMAGE_PATH + getNewUncheckedSizePath(query) + "_" + imageQuality + pathSep + getConvertedImageName(query);
-	// Do a simple check for current cached image..
-	if(getCachedImage(newPath)){
-		callback(null, newPath);
-		return;
-	}
+	var newPath = SIZED_IMAGE_PATH + getConvertedImageName(query);
 
 	// Get the new size object
 	calculateNewSize(query, function(err, imageSize){
@@ -150,29 +119,24 @@ exports.changeImage = function(query, callback){
 			//imageOptions.dst = newPath = newPath + getImageName(query.source);
 			imageOptions.dst = newPath = newPath + getConvertedImageName(query);
 			console.log("Convert new image: " + newPath);
-			if(getCachedImage(newPath)){
-				callback(null, newPath);
-				return;
-			}
+
 			// Merge in image size
 			imageOptions = _.extend(imageOptions, imageSize);
 
 			// Shrink image
-			easyimg.resize(imageOptions, function(err, image){
-				console.log("Error?: " + err);
-				if(err){
-					callback(err, getImagePath(query.source));
-				}else{
-					console.log("ext = " + getImageExt(newPath));
-					if(getImageExt(newPath) == "png"){				
-						easyimg.exec('optipng -o7 ' + newPath, function(err, stdout, stderr){
-							console.log("Convert new image - optipng");
-							callback(null, newPath);
-						});
-					} else {
+			easyimg.resize(imageOptions).then(function(err, image){
+				console.log("ext = " + getImageExt(newPath));
+				if(getImageExt(newPath) == "png"){
+					easyimg.execute('optipng -o7 ' + newPath, function(err, stdout, stderr){
+						console.log("Convert new image - optipng");
 						callback(null, newPath);
-					}
+					});
+				} else {
+					callback(null, newPath);
 				}
+			}).catch((err)=>{
+				console.log("shouldnt happen");
+				callback(err, getImagePath(query.source));
 			});
 		}
 	});
@@ -217,16 +181,7 @@ function calculateNewSize(query, callback){
 	// Empty object to populate
 	var imageSize = {};
 
-		//Get current image on file
-	easyimg.info(getImagePath(query.source), function(err, stdout, stderr){
-
-		if(err){
-			callback(err, null);
-			return;
-		}
-
-		console.log(stdout);
-
+	easyimg.info(getImagePath(query.source)).then(function(stdout){
 		//Get current size
 		var cWidth, cHeight;
 		cWidth = stdout.width;
@@ -238,7 +193,7 @@ function calculateNewSize(query, callback){
 			nWidth = Math.min(nWidth,cWidth);
 			nHeight = Math.min(nHeight,cHeight);
 			//Set new file path
-			imageSize =	{ 
+			imageSize =	{
 				height : roundSize(nHeight),
 			 	width : roundSize(nWidth)
 			 };
@@ -252,6 +207,9 @@ function calculateNewSize(query, callback){
 			}
 		}
 		callback(null, imageSize);
+	}).catch(()=>{
+		callback(false, null);
+		return;
 	});
 }
 
@@ -302,7 +260,7 @@ function getCachedImage(path){
 	}
 }
 
-// returns a number for quality image defaults to 80 
+// returns a number for quality image defaults to 80
 function getImageQuality(query){
 	var qual = 80;
 	if(query.quality !== undefined && _.isNumber(new Number(query.quality))){
@@ -329,7 +287,7 @@ function getConvertedImageName(query){
 
 // Returns the path for the source image
 function getImagePath(source){
-	var urlPath = url.parse(source).path;	
+	var urlPath = url.parse(source).path;
 	var lastPath = _.last(urlPath.split("/"));
 	var savePath = ORGINAL_IMAGE_PATH + lastPath;
 	return savePath;
