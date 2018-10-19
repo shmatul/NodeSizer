@@ -185,6 +185,7 @@ function calculateNewSize(query, callback){
 	easyimg.info(getImagePath(query.source)).then(function(stdout){
 		//Get current size
 		var cWidth, cHeight;
+		console.log(stdout);
 		cWidth = stdout.width;
 		cHeight = stdout.height;
 		if(cWidth === undefined || cHeight === undefined){
