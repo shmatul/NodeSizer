@@ -209,7 +209,8 @@ function calculateNewSize(query, callback){
 			}
 		}
 		callback(null, imageSize);
-	}).catch(()=>{
+	}).catch((err)=>{
+		console.log("error while getting info", err);
 		callback(false, null);
 		return;
 	});
